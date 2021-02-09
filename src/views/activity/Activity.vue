@@ -88,33 +88,16 @@ div
           span.d-none.d-md-inline
             |  {{ $t('activity.filters') }}
             b-badge(pill, variant="secondary" v-if="filters_set > 0").ml-2 {{ filters_set }}
-        b-button.px-2(@click="refresh(true)", variant="outline-dark", title="Refresh", aria-label="Refresh")
-          icon(name="sync")
+        b-tooltip(:triggers="autorefresh ? 'hover' : ''" target="refresh-button") Autorefresh is on (30s)
+        b-button#refresh-button.px-2(@click="refresh(true)", variant="outline-dark", title="Refresh", aria-label="Refresh")
+          icon(name="sync" style="animation-duration: 3s;", :class="{'green': autorefresh}")
           span.d-none.d-md-inline
             |  {{ $t('activity.refresh') }}
-
-  div.row(v-if="showOptions" style="background-color: #EEE;").my-3.py-3
-    div.col-md-12
-      h5 {{ $t('activity.filtersTitle') }}
-    div.col-md-6
-      b-form-checkbox(v-model="filter_afk" size="sm")
-        | {{ $t('activity.excludeAfk') }}
-        icon#filterAFKHelp(name="question-circle" style="opacity: 0.4")
-        b-tooltip(target="filterAFKHelp" v-b-tooltip.hover :title="$t('activity.filterAfkTooltip')")
-      b-form-checkbox(v-model="include_audible" :disabled="!filter_afk" size="sm")
-        | {{ $t('activity.audibleActive') }}
-        icon#includeAudibleHelp(name="question-circle" style="opacity: 0.4")
-        b-tooltip(target="includeAudibleHelp" v-b-tooltip.hover :title="$t('activity.filterAudibleTooltip')")
-
-      b-form-checkbox(v-if="devmode" v-model="include_stopwatch" size="sm")
-        // WIP: https://github.com/ActivityWatch/aw-webui/pull/368
-        | {{ $t('activity.includeStopwatch') }}
-        br
-        | {{ $t('activity.stopwatchWipNote') }}
-
-    div.col-md-6.mt-2.mt-md-0
-      b-form-group(:label="$t('activity.showCategory')" label-cols="5" label-cols-lg="4" style="font-size: 0.88em")
-        b-form-select(v-model="filter_category", :options="categoryStore.category_select(true)" size="sm")
+        b-dropdown(right, variant="outline-dark", size="sm", style="margin-left: -0.5px;")
+          b-dropdown-form.p-0
+            // TODO: Actually implement autorefresh functionality
+            b-checkbox(v-model="autorefresh" switch style="padding-left: 2rem; padding-right: 2rem")
+              | Autorefresh
 
 
   aw-periodusage(:periodusage_arr="periodusage", @update="setDate")
@@ -165,6 +148,10 @@ div
   // page heading.
   width: 9.5rem;
   min-width: 9.5rem;
+}
+
+.green {
+  color: #0a0;
 }
 
 .nav {
@@ -272,6 +259,7 @@ export default {
       include_stopwatch: true,
       filter_afk: true,
       new_view: {},
+      autorefresh: false,
     };
   },
   computed: {
