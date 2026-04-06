@@ -183,15 +183,15 @@ export default {
         buckets = _.filter(buckets, b => b.client == this.filter_client);
       }
 
+      // AFK filtering: use query engine to filter window events by AFK status
+      if (this.filter_afk) {
+        buckets = await this._applyAfkFilter(buckets);
+      }
+
       if (this.filter_duration > 0) {
         for (const bucket of buckets) {
           bucket.events = _.filter(bucket.events, e => e.duration >= this.filter_duration);
         }
-      }
-
-      // AFK filtering: use query engine to filter window events by AFK status
-      if (this.filter_afk) {
-        buckets = await this._applyAfkFilter(buckets);
       }
 
       this.buckets = buckets;
