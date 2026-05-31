@@ -38,6 +38,7 @@ interface BaseQueryParams {
 interface DesktopQueryParams extends BaseQueryParams {
   bid_window: string;
   bid_afk: string;
+  bid_editors?: string[];
   filter_afk: boolean;
   always_active_pattern?: string;
 }
@@ -142,6 +143,14 @@ export function canonicalEvents(params: DesktopQueryParams | AndroidQueryParams)
     // Filter out window events when the user was afk
     isDesktopParams(params) && params.filter_afk
       ? 'events = filter_period_intersect(events, not_afk);'
+      : '',
+    // Merge editor events into the main stream so editor fields (project, file, language)
+    // are available for categorization. Editor events are inherently active (emitted by
+    // editor watchers only during real editing), so no AFK filter needed.
+    isDesktopParams(params) && params.bid_editors
+      ? `editor_events = [];
+         ${params.bid_editors.map(bid => `editor_events = concat(editor_events, flood(query_bucket("${escape_doublequote(bid)}")));`).join('\n         ')}
+         events = concat(events, editor_events);`
       : '',
     params.bid_stopwatch
       ? `stopwatch_events = query_bucket("${params.bid_stopwatch}");
@@ -346,6 +355,7 @@ export function fullDesktopQuery(params: DesktopQueryParams): string[] {
       bid_window: escape_doublequote(params.bid_window),
       bid_afk: escape_doublequote(params.bid_afk),
       bid_browsers: _.map(params.bid_browsers, escape_doublequote),
+      bid_editors: params.bid_editors,
     })}
     title_events = sort_by_duration(merge_events_by_keys(events, ["app", "title"]));
     app_events   = sort_by_duration(merge_events_by_keys(title_events, ["app"]));

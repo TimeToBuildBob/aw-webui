@@ -361,6 +361,7 @@ export const useActivityStore = defineStore('activity', {
       const q = queries.fullDesktopQuery({
         bid_window: this.buckets.window[0],
         bid_afk: this.buckets.afk[0],
+        bid_editors: this.buckets.editor,
         bid_browsers: this.buckets.browser,
         bid_stopwatch:
           include_stopwatch && this.buckets.stopwatch.length > 0
@@ -517,6 +518,7 @@ export const useActivityStore = defineStore('activity', {
             : {
                 bid_afk: this.buckets.afk[0],
                 bid_window: this.buckets.window[0],
+                bid_editors: this.buckets.editor,
               }),
         });
         const result = await getClient().query([period], query, {
