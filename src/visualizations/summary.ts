@@ -9,7 +9,26 @@ import { getCategoryColorFromString } from '~/util/color';
 import { seconds_to_duration } from '~/util/time';
 import { IEvent } from '~/util/interfaces';
 
-const textColor = '#333';
+// Returns an inline CSS style that makes bar text readable in both dark
+// and light modes. The color is chosen for contrast against the bar's
+// background, with a text-shadow to handle the case where the label
+// overflows the colored bar into the page background area.
+function getBarTextStyle(bgColor: string): string {
+  try {
+    const color = Color(bgColor);
+    if (color.isLight()) {
+      // Light bar → dark text; white shadow provides contrast when
+      // the text overflows onto a dark page background (dark mode).
+      return 'fill: #333 !important; text-shadow: 0 0 4px rgba(255,255,255,0.6)';
+    } else {
+      // Dark bar → light text; dark shadow provides contrast when
+      // the text overflows onto a light page background (light mode).
+      return 'fill: #eee !important; text-shadow: 0 0 4px rgba(0,0,0,0.6)';
+    }
+  } catch {
+    return 'fill: #333 !important';
+  }
+}
 
 function create(container: HTMLElement) {
   // Clear element
@@ -121,7 +140,7 @@ function update(container: HTMLElement, apps: Entry[]) {
       .text(displayName)
       .attr('font-family', 'sans-serif')
       .attr('font-size', textSize + 'px')
-      .attr('fill', textColor);
+      .attr('style', getBarTextStyle(appcolor));
 
     // Duration
     eg.append('text')
@@ -130,7 +149,7 @@ function update(container: HTMLElement, apps: Entry[]) {
       .text(seconds_to_duration(app.duration))
       .attr('font-family', 'sans-serif')
       .attr('font-size', textSize - 3 + 'px')
-      .attr('fill', '#444');
+      .attr('style', getBarTextStyle(appcolor));
 
     curr_y += barHeight + 5;
   });
