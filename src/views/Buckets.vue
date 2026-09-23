@@ -234,7 +234,7 @@ import moment from 'moment';
 
 import { useServerStore } from '~/stores/server';
 import { useBucketsStore } from '~/stores/buckets';
-import { downloadFile } from '~/util/export';
+import { androidExportFromUrl, downloadBlob, downloadFile } from '~/util/export';
 
 export default {
   name: 'Buckets',
@@ -379,33 +379,51 @@ export default {
     },
 
     async export_bucket_json(bucketId: string) {
-      const response = await this.$aw.req.get(`/0/buckets/${bucketId}/export`);
-      const data = JSON.stringify(response.data, null, 2);
-      await downloadFile(`aw-bucket-export-${bucketId}.json`, data, 'application/json');
+      await this.export_json(`/0/buckets/${bucketId}/export`, `aw-bucket-export-${bucketId}.json`);
     },
 
     async export_all_buckets_json() {
-      const response = await this.$aw.req.get('/0/export');
-      const data = JSON.stringify(response.data, null, 2);
-      await downloadFile('aw-bucket-export.json', data, 'application/json');
+      await this.export_json('/0/export', 'aw-bucket-export.json');
+    },
+
+    async export_json(path: string, filename: string) {
+      const url = `${this.$aw.req.defaults.baseURL || ''}${path}`;
+      if (androidExportFromUrl(url, filename)) {
+        return;
+      }
+      try {
+        const response = await this.$aw.req.get(path, {
+          timeout: 0,
+          responseType: 'blob',
+        });
+        await downloadBlob(filename, response.data, 'application/json');
+      } catch (error) {
+        console.error('Export failed', error);
+        this.$bvToast.toast('Export failed', { variant: 'danger', solid: true });
+      }
     },
 
     async export_csv(bucketId: string) {
-      const bucket = await this.bucketsStore.getBucketWithEvents({ id: bucketId });
-      const events = bucket.events;
-      const datakeys = events.length > 0 ? Object.keys(events[0].data) : [];
-      const columns = ['timestamp', 'duration'].concat(datakeys);
-      const data = events.map(e => {
-        return Object.assign(
-          { timestamp: e.timestamp, duration: e.duration },
-          Object.fromEntries(datakeys.map(k => [k, e.data[k]]))
-        );
-      });
-      const csv = Papa.unparse(data, { columns, header: true });
-      const filename = `aw-events-export-${bucketId}-${new Date()
-        .toISOString()
-        .substring(0, 10)}.csv`;
-      await downloadFile(filename, csv, 'text/csv');
+      try {
+        const bucket = await this.bucketsStore.getBucketWithEvents({ id: bucketId });
+        const events = bucket.events;
+        const datakeys = events.length > 0 ? Object.keys(events[0].data) : [];
+        const columns = ['timestamp', 'duration'].concat(datakeys);
+        const data = events.map(e => {
+          return Object.assign(
+            { timestamp: e.timestamp, duration: e.duration },
+            Object.fromEntries(datakeys.map(k => [k, e.data[k]]))
+          );
+        });
+        const csv = Papa.unparse(data, { columns, header: true });
+        const filename = `aw-events-export-${bucketId}-${new Date()
+          .toISOString()
+          .substring(0, 10)}.csv`;
+        await downloadFile(filename, csv, 'text/csv');
+      } catch (error) {
+        console.error('Export failed', error);
+        this.$bvToast.toast('Export failed', { variant: 'danger', solid: true });
+      }
     },
   },
 };
