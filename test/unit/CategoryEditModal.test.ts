@@ -3,6 +3,7 @@ import BootstrapVue, { BModal } from 'bootstrap-vue';
 import { createPinia, PiniaVuePlugin, setActivePinia } from 'pinia';
 import CategoryEditModalComponent from '~/components/CategoryEditModal.vue';
 import { useCategoryStore } from '~/stores/categories';
+import { splitRegexPipe } from '~/util/validate';
 
 // Tests call Options API members directly, which the Vue constructor type doesn't expose.
 const CategoryEditModal: any = CategoryEditModalComponent;
@@ -79,6 +80,7 @@ describe('CategoryEditModal field-scoped rules', () => {
       $nextTick: callback => callback(),
       $refs: { edit: { hide: jest.fn() } },
       priorityFromInput: CategoryEditModal.methods.priorityFromInput,
+      storedRegex: CategoryEditModal.methods.storedRegex,
     };
     return {
       vm,
@@ -146,6 +148,7 @@ describe('CategoryEditModal rule priority', () => {
       $refs: { edit: { hide: jest.fn() } },
       priorityFromInput: CategoryEditModal.methods.priorityFromInput,
       priorityFromRule: CategoryEditModal.methods.priorityFromRule,
+      storedRegex: CategoryEditModal.methods.storedRegex,
       categoryId: null as number | null,
     };
     return { vm, updateClass };
@@ -254,6 +257,57 @@ describe('CategoryEditModal score round trip', () => {
       rule: { type: 'none' },
       data: { score: score ?? undefined, color: '#123456' },
     });
+  });
+});
+
+describe('CategoryEditModal regex round trip', () => {
+  const handleSubmit = vm => CategoryEditModal.methods.handleSubmit.call(vm);
+
+  function ctx(regex: string, rulePatterns?: string[]) {
+    const updateClass = jest.fn();
+    const vm: any = {
+      editing: {
+        id: 1,
+        name: 'Browser',
+        parent: ['Work'],
+        rule: { type: 'regex', regex },
+        rulePatterns: rulePatterns ?? splitRegexPipe(regex),
+        originalRegex: regex,
+        match_fields: [],
+        inherit_color: true,
+        color: null,
+        inherit_score: true,
+        score: null,
+        priority: null,
+      },
+      storedRegex: CategoryEditModal.methods.storedRegex,
+      checkFormValidity: () => true,
+      categoryStore: { updateClass },
+      $nextTick: callback => callback(),
+      $refs: { edit: { hide: jest.fn() } },
+      priorityFromInput: CategoryEditModal.methods.priorityFromInput,
+    };
+    return { vm, updateClass };
+  }
+
+  test('unedited save writes the original regex, including empty alternatives', () => {
+    const original = 'a||b';
+    const { vm, updateClass } = ctx(original);
+    handleSubmit(vm);
+    expect(updateClass.mock.calls[0][0].rule.regex).toBe(original);
+  });
+
+  test('unedited save keeps surrounding spaces in alternatives', () => {
+    const original = 'Google Chrome| - YouTube';
+    const { vm, updateClass } = ctx(original);
+    handleSubmit(vm);
+    expect(updateClass.mock.calls[0][0].rule.regex).toBe(original);
+  });
+
+  test('edited patterns are joined without trimming', () => {
+    const { vm, updateClass } = ctx('foo|bar', ['Google Chrome', ' - YouTube']);
+    handleSubmit(vm);
+    expect(updateClass.mock.calls[0][0].rule.regex).toBe('Google Chrome| - YouTube');
   });
 });
 
